@@ -91,6 +91,29 @@ func TestAddress(addr string, resChan chan<- Result) {
 	resChan <- Result{found, addr}
 }
 
+func createFile(p string) *os.File {
+//    fmt.Println("creating")
+    f, err := os.Create(p)
+    if err != nil {
+        panic(err)
+    }
+    return f
+}
+
+func writeFile(f *os.File) {
+    fmt.Println("writing")
+    fmt.Fprintln(f, "data")
+}
+
+func closeFile(f *os.File) {
+//    fmt.Println("closing")
+    err := f.Close()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "error: %v\n", err)
+        os.Exit(1)
+    }
+}
+
 func main() {
 
 	addrChan := make(chan string, threads)
@@ -113,11 +136,16 @@ func main() {
 		defer f.Close()
 	}
 
-	out, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE, os.ModeAppend)
-	if err != nil {
-		out = os.Stdout
-	}
-	defer out.Close()
+//        out, err := os.OpenFile(outputFile, os.O_APPEND|os.O_CREATE, 0644)
+ //       if err != nil {		
+  //          out = os.Stdout
+//	}
+//	defer out.Close()
+        out := os.Stdout
+        if len(outputFile) > 0 {
+            out = createFile(outputFile)
+            defer closeFile(out)
+        }
 
 	// TODO: Put some fancy ascii art here??
 	fmt.Println("--- Starting bruteforce --")
@@ -170,13 +198,23 @@ func main() {
 		tested++
 		if result.Found {
 			found++
+                        //If no output file, just print to the stdout
+                        //If there is an input file, print to file and stdout
 			if out == os.Stdout {
 				// 'Flush' stdout
 				fmt.Printf("%100s\r", "")
-			}
-			fmt.Fprintln(out, result.Address)
+                                fmt.Fprintln(out, result.Address)
+			} else {
+                        // 'Flush' stdout
+                        fmt.Printf("%100s\r", "")
+		        fmt.Fprintln(out, result.Address)
+                        fmt.Println(result.Address)
+                    }
 		}
 
 		fmt.Printf("[*] Tested: %d, Found: %d\r", tested, found)
 	}
+        //Write the final results to bottom of file
+        fmt.Fprintln(out,"[*] Final tested: ", tested)
+        fmt.Fprintln(out,"[*] FInal found: ", found)
 }
